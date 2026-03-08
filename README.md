@@ -1,6 +1,11 @@
 ﻿# Smart Bin Service
 
 IoT 스마트 쓰레기통의 펌웨어(센서 수집) - 백엔드(저장/조회) - 프론트엔드(모니터링)를 한 저장소에 모아둔 프로젝트입니다.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/5f5958ad-1772-450f-8a82-d11e7324540d" height="300" />
+  <img src="https://github.com/user-attachments/assets/e4b79caf-bd70-4017-bb9f-e15c0624e92a" height="300" />
+</p>
+
 
 ## 1. 프로젝트 개요
 
@@ -13,6 +18,8 @@ IoT 스마트 쓰레기통의 펌웨어(센서 수집) - 백엔드(저장/조회
 1. 디바이스가 MQTT 토픽 `Bin/test/data`로 센서 JSON 발행
 2. `sensor-server`가 구독 후 DB(`sensor_reading`)에 저장
 3. `dashboard-frontend`가 REST API로 최신 상태 조회/시각화
+<img width="505" height="665" alt="image" src="https://github.com/user-attachments/assets/6baf92fd-3305-4640-8a6f-0d5f61b6cac4" />
+
 
 ## 2. 디렉터리 구조
 
@@ -182,4 +189,5 @@ Base URL: `http://localhost:8080`
 - DB 계정/비밀번호를 환경변수로 분리
 - Frontend `VITE_API_BASE_URL`과 Backend 포트/도메인 일치 여부 확인
 - CORS/보안 설정(토큰, 방화벽, 비밀정보 분리) 점검
+
 
