@@ -1,6 +1,6 @@
 ﻿# Smart Bin Service
 
-IoT 스마트 쓰레기통의 펌웨어(센서 수집) - 백엔드(저장/조회) - 프론트엔드(모니터링)를 한 저장소에 모아둔 프로젝트입니다.
+IoT 스마트 쓰레기통의 펌웨어(센서 수집 + 움직임 감지 AI 모델) - 백엔드(저장/조회) - 프론트엔드(모니터링)를 한 저장소에 모아둔 프로젝트입니다.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/5f5958ad-1772-450f-8a82-d11e7324540d" height="300" />
   <img src="https://github.com/user-attachments/assets/e4b79caf-bd70-4017-bb9f-e15c0624e92a" height="300" />
@@ -189,5 +189,6 @@ Base URL: `http://localhost:8080`
 - DB 계정/비밀번호를 환경변수로 분리
 - Frontend `VITE_API_BASE_URL`과 Backend 포트/도메인 일치 여부 확인
 - CORS/보안 설정(토큰, 방화벽, 비밀정보 분리) 점검
+
 
 
