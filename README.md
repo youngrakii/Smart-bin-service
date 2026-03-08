@@ -1,80 +1,150 @@
-﻿IoT 쓰레기통 스택
+﻿# Smart Bin Service
 
-목차
+IoT 스마트 쓰레기통의 **펌웨어(센서 수집) - 백엔드(저장/조회) - 프론트엔드(모니터링)**를 한 저장소에 모아둔 프로젝트입니다.
 
-dashboard-frontend (쓰레기통 모니터링을 위한 React + TypeScript + Vite UI)
+## 1. 프로젝트 개요
 
-sensor-server (PostgreSQL + MQTT 구독자를 포함한 Spring Boot 4 / Java 17 백엔드)
+- `iotEdge`: ESP32/Nano 기반 센서 수집, MQTT 발행, 모션 기반 GPS 게이팅
+- `sensor-server`: Spring Boot + PostgreSQL + MQTT 구독 + REST API
+- `dashboard-frontend`: React + Vite 대시보드/지도/목록 UI
 
-iotEdge_finalTeamPrj (ESP32/Nano 펌웨어, Edge Impulse 기반 모션 감지/통합 스케치)
+데이터 흐름:
 
+1. 디바이스가 MQTT 토픽 `Bin/test/data`로 센서 JSON 발행
+2. `sensor-server`가 구독 후 DB(`sensor_reading`)에 저장
+3. `dashboard-frontend`가 REST API로 최신 상태 조회/시각화
 
+## 2. 디렉터리 구조
 
-데이터 흐름
+```text
+.
+|- dashboard-frontend/    # React + TypeScript + Vite UI
+|- sensor-server/         # Spring Boot 4 + JPA + PostgreSQL + MQTT
+|- iotEdge/               # ESP32/Nano 펌웨어 + Edge Impulse 모델
+`- README.md
+```
 
-ESP32 펌웨어(Master_bin/Remote_bin)가 MQTT로 JSON을 발행합니다(토픽 Bin/test/data). 거리/무게/누수 값에 필요 시 GPS 좌표가 포함되고, 모션 발생 시 GPS를 켜는 구조가 있습니다.
+## 3. 기술 스택
 
-sensor-server가 해당 토픽을 구독하고, SensorReading 레코드를 저장한 뒤 REST API를 제공합니다.
+- Frontend: React 18, TypeScript, Vite
+- Backend: Java 17, Spring Boot 4.0.0, Spring Data JPA, Eclipse Paho MQTT
+- Database: PostgreSQL
+- Edge: ESP32, Arduino Nano 33 BLE Sense, VL53L5CX, HX711, 누수 센서, GPS(TinyGPS)
+- AI: Edge Impulse (`iotEdge/motion_detect_iot_bin_inferencing`)
 
-dashboard-frontend가 REST API를 호출해 대시보드/지도/리스트 화면을 렌더링합니다.
+## 4. 빠른 실행 (로컬)
 
+권장 실행 순서:
 
+1. `sensor-server` 실행
+2. `dashboard-frontend` 실행
+3. 디바이스(`iotEdge`) 전원 인가 및 MQTT 발행 확인
 
-대시보드 프론트엔드 (dashboard-frontend (대시보드))
+### 4.1 Backend 실행 (`sensor-server`)
 
-구성: React + TS + Vite, Kakao Maps JS SDK 로더는 src/lib/kakaoLoader.ts, 센서 API 클라이언트는 src/lib/sensorApi.ts, 샘플 쓰레기통 데이터는 src/lib/trashData.ts에 있습니다.
+사전 요구사항:
 
-로컬 실행
+- JDK 17
+- PostgreSQL 접근 정보
 
-cd "dashboard-frontend (대시보드)"
+실행:
 
+```bash
+cd sensor-server
+./gradlew bootRun
+```
+
+Windows PowerShell:
+
+```powershell
+cd sensor-server
+.\gradlew.bat bootRun
+```
+
+Docker:
+
+```bash
+cd sensor-server
+docker build -t sensor-server .
+docker run -p 8080:8080 --env-file .env sensor-server
+```
+
+기본 포트: `8080`
+
+### 4.2 Frontend 실행 (`dashboard-frontend`)
+
+사전 요구사항:
+
+- Node.js 18+
+
+실행:
+
+```bash
+cd dashboard-frontend
 npm install
+npm run dev -- --host
+```
 
-npm run dev -- --host (또는 npm run build 후 npm run preview)
+기본 개발 서버: Vite 기본값(`5173`)
 
-필요한 환경변수 (.env에 복사):
+## 5. 환경변수
+
+### 5.1 Frontend (`dashboard-frontend/.env`)
+
+```env
 VITE_API_BASE_URL=http://localhost:8080
+VITE_KAKAO_MAP_KEY=<KAKAO_JAVASCRIPT_KEY>
+```
 
-VITE_KAKAO_MAP_KEY=<kakao_javascript_key>
+### 5.2 Backend (`sensor-server`)
 
-동작 방식: Dashboard/Map/List 탭으로 구성됩니다. Map 페이지는 카카오 지도를 로드하고 쓰레기통 마커를 그린 뒤, 실시간 상태를 위해 /api/readings/latest?binId=...를 조회합니다. API 데이터가 없으면 미리 심어둔 trashBins 데이터를 대체로 사용합니다. 거리/무게/누수 값은 “채움 상태/수거 필요 상태”로 변환됩니다.
+`application.properties` 기본값을 환경변수로 덮어쓸 수 있습니다.
 
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `PORT` (기본 `8080`)
+- `APP_MQTT_BROKER_URL` (기본 `tcp://165.246.44.72:2025`)
+- `APP_MQTT_CLIENT_ID` (기본 `sensor-server-backend`)
+- `APP_MQTT_TOPIC` (기본 `Bin/test/data`)
+- `APP_MQTT_DEFAULT_BIN_ID` (기본 `Bin-Master`)
 
+## 6. API 스펙 (`sensor-server`)
 
-센서 서버 (sensor-server (서버))
+Base URL: `http://localhost:8080`
 
-구성: Spring Boot 4, Java 17, WebFlux/WebMVC, PostgreSQL용 JPA, Eclipse Paho 기반 MQTT. 주요 클래스: mqtt/MqttSubscriberConfig(브로커 연결, 구독, SensorPayload 파싱, SensorReading 저장), sensor/controller/SensorReadingController(REST), sensor/model/SensorReading(JPA 엔티티).
+### 6.1 최신 목록 조회
 
-REST API
-GET /api/readings?binId=<id>&limit=50 -> 최신순 리스트 (binId 누락 시 400)
-GET /api/readings/latest?binId=<id> -> 최신 1건 (데이터 없으면 204)
-필드: id, binId, distanceMm, weightG, waterAdc, needCollection, lat, lng, createdAt.
+`GET /api/readings?binId=<id>&limit=50`
 
-설정 (application.properties에 기본값 존재, 환경변수로 덮어쓰기 가능):
-SPRING_DATASOURCE_URL
-SPRING_DATASOURCE_USERNAME
-SPRING_DATASOURCE_PASSWORD
-APP_MQTT_BROKER_URL (기본값 tcp://165.246.44.72:2025)
-APP_MQTT_CLIENT_ID (기본값 sensor-server-backend)
-APP_MQTT_TOPIC (기본값 Bin/test/data)
-APP_MQTT_DEFAULT_BIN_ID (bin_id가 없을 때 대체값, 기본값 Bin-Master)
-PORT (기본값 8080)
+- `binId` 누락 시 `400 Bad Request`
+- 최대 `500`개까지 제한
 
-로컬 실행: cd "sensor-server (서버)" && ./gradlew bootRun
-JAR 빌드: ./gradlew bootJar && java -jar build/libs/*SNAPSHOT.jar
-Docker: docker build -t sensor-server . && docker run -p 8080:8080 --env-file <env> sensor-server
+### 6.2 최신 1건 조회
 
+`GET /api/readings/latest?binId=<id>`
 
+- 데이터 없으면 `204 No Content`
 
-임베디드/펌웨어 (iotEdge_finalTeamPrj)
+응답 필드:
 
-- Master_bin/Master_bin.ino: ESP32 통합 스케치. VL53L5CX ToF(8x8) + HX711 로드셀 + 아날로그 누수 센서 + TinyGPS를 사용해 1초마다 Bin/test/data 토픽으로 MQTT 발행합니다. 거리/무게/누수 임계값으로 need_collection을 판단하며 초기 1회 기본 GPS 좌표(37.45, 126.65)를 넣습니다. Wi-Fi SSID/비밀번호와 브로커 정보가 하드코딩되어 있으므로 플래시 전 교체하세요.
-- Remote_bin/Remote_bin.ino: ESP32 스케치로 Nano 33 BLE Sense(모션 추론 결과 “MOVING”)를 UART(RX4/TX5)로 수신해 GPS(UART2, RX16/TX17)를 필요 시만 켭니다. ToF 중심/전체 거리, 로드셀, 누수 센서 값을 읽어 bin_id=Bin-Master, need_collection 여부, 최신 GPS(유효/신선한 경우만)와 함께 Bin/test/data로 MQTT 발행합니다.
-- nano_motion_detect/nano_motion_detect.ino: Arduino Nano 33 BLE Sense용. LSM9DS1 가속도계를 Edge Impulse 모델(motion_detect_iot_bin_inferencing)로 추론해 모션 스코어가 임계값(약 0.7) 이상이면 UART(Serial1)로 “MOVING”을 ESP32에 전송하여 GPS를 게이팅합니다.
-- motion_detect_iot_bin_inferencing/: Edge Impulse C++ 추론 라이브러리와 예제(examples/esp32, nano_ble33_sense, nicla_sense, nicla_vision, portenta_h7, rp2040, sony_spresense, static_buffer). 핵심 헤더는 src/motion_detect_iot_bin_inferencing.h에 있으며, model-parameters 및 tflite-model이 포함됩니다.
-- EachSensor_testCode/: 단일 센서 브링업 스케치. GPSNeo6m_code, HX711_code, LeakSensor_code, ToFSensor_code로 구성되어 개별 센서를 따로 검증할 수 있습니다.
+- `id`
+- `binId`
+- `distanceMm`
+- `weightG`
+- `waterAdc`
+- `needCollection`
+- `lat` (optional)
+- `lng` (optional)
+- `createdAt`
 
-MQTT 페이로드 예시:
+## 7. MQTT 페이로드
+
+토픽: `Bin/test/data`
+
+예시:
+
+```json
 {
   "bin_id": "Bin-Master",
   "distance_mm": 120,
@@ -84,13 +154,31 @@ MQTT 페이로드 예시:
   "lat": 37.45,
   "lng": 126.65
 }
-(GPS가 비활성 상태면 lat/lng는 생략됩니다. 이때 백엔드는 binId가 없을 경우 APP_MQTT_DEFAULT_BIN_ID를 사용합니다.)
+```
 
+참고:
 
+- `lat/lng`는 상황에 따라 생략될 수 있음
+- `bin_id`가 비어 있으면 서버가 `APP_MQTT_DEFAULT_BIN_ID`로 대체
 
+## 8. iotEdge 구성 요약
 
-팁
+- `iotEdge/Master_bin/Master_bin.ino`
+  - ToF/HX711/누수 센서 값을 1초 주기로 MQTT 발행
+  - 임계값 조건으로 `need_collection` 계산
+- `iotEdge/Remote_bin/Remote_bin.ino`
+  - Nano에서 `MOVING` UART 신호 수신 시 GPS 활성화
+  - GPS 신호가 유효/신선할 때만 `lat/lng` 포함 발행
+- `iotEdge/nano_motion_detect/nano_motion_detect.ino`
+  - Edge Impulse 추론 결과 moving 점수(평균)가 임계값(0.7) 이상이면 `MOVING` 전송
+- `iotEdge/EachSensor_testCode/`
+  - 센서별 단독 테스트 스케치
+- `iotEdge/motion_detect_iot_bin_inferencing/`
+  - Edge Impulse 라이브러리/모델/예제
 
-운영(프로덕션) 적용 전에는 Wi-Fi 및 DB 자격증명(크리덴셜)을 교체하세요.
+## 9. 운영 전 체크리스트
 
-프론트/백엔드 환경변수 값을 서로 일치시키세요: API Base URL, 카카오 키, MQTT 토픽/bin id 등.
+- 펌웨어 내 Wi-Fi SSID/비밀번호, MQTT 주소를 실제 환경 값으로 교체
+- DB 계정/비밀번호를 환경변수로 분리
+- Frontend `VITE_API_BASE_URL`과 Backend 포트/도메인 일치 여부 확인
+- CORS/보안 설정(토큰, 방화벽, 비밀정보 분리) 점검
